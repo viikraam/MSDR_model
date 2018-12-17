@@ -63,13 +63,13 @@ pipe_fv =  9.0614           ; % volume of fuel in external piping and PHX (m3), 
 tot_fv  = 30.5822           ; % total volume of fuel salt in the plant (m3), Source: ORNL-TM-3832, table 9
 
 % Fuel temperature in core
-Tf_out  = 676.67930642           ; % core fuel salt outlet temperature (°C), Source: ORNL-TM-3832, fig 1 & table 2
-Tf_in   = 565.79462765           ; % core fuel salt inlet temperature (°C), Source: ORNL-TM-3832, fig 1 & table 2
+Tf_out  = 695.4813           ; % core fuel salt outlet temperature (°C), Source: ORNL-TM-3832, fig 1 & table 2
+Tf_in   = 584.5972           ; % core fuel salt inlet temperature (°C), Source: ORNL-TM-3832, fig 1 & table 2
 Tf_avg  = (Tf_out + Tf_in)/2; % core fuel salt avg temperature, (out+in)/2
 
-T0_fa    = [593.51579735, 648.95813673]; % fuel nodes a
-T0_fb    = [621.23696705, Tf_out]; % fuel nodes b
-T0_g     = [621.35868518, 676.80102439]; % graphite nodes
+T0_fa    = [612.3182, 667.7603]; % fuel nodes a
+T0_fb    = [640.0393, Tf_out]; % fuel nodes b
+T0_g     = [640.1610, 695.6031]; % graphite nodes
 
 %% PKE tau calculations
 P       = 750; % (MW)
@@ -94,15 +94,17 @@ m_fm    = W_f*2;
 tau_c   = core_fm/W_f       ; % fuel salt core residence time (s)
 tau_l   = pipe_fm/W_f       ; % fuel salt loop residence time (s)
 
-tau_p = 5;
-therm_conv = 0.05;
+tau_p = 20;
+therm_conv = 0.25;
 
 
 % reactdata = [0 2e-4 0 -2e-4 0 2e-4 0 -2e-4 0 2e-4 0];
 % reacttime = [0 2500 2550 2600 2650 2700 2750 2800 2850 2900 2950];
-reactdata = [0 0e-4];
-reacttime = [0 5000];
+reactdata = [0 1e-4 -1e-4 0];
+reacttime = [0 3600  7200 10800];
 react = timeseries(reactdata,reacttime);
+
+run('demand_power.m');
 
 %% PKE parameters
 
@@ -557,19 +559,26 @@ ydat=[0.013508209475996
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % heat capacities
-Cp_p        = 5763.597e-6; % Water Cp_s_shx;    % [[MJ/(kg/°C)]        1.376611513    ; [BTU/F-lbm] % primary fluid                 
+Cp_p        = Cp_s_shx; % 5763.597e-6; % Water Cp_s_shx;    % [[MJ/(kg/°C)]        1.376611513    ; [BTU/F-lbm] % primary fluid                 
 Cp_w        = 456.056e-6;  % [[MJ/(kg/°C)]        0.109          ; [BTU/F-lbm] % inconel                        
-Cp_fw       = 4694.448e-6; % [[MJ/(kg/°C)]        1.122          ; [BTU/F-lbm] % feedwater                      
+Cp_fw       = 3200.448e-6; % [[MJ/(kg/°C)]        1.122          ; [BTU/F-lbm] % feedwater                      
 Cp_sc       = 4761.392e-6; % [[MJ/(kg/°C)]        1.138          ; [BTU/F-lbm] % subcooled fluid                
 Cp_s        = 3588.208e-6; % [[MJ/(kg/°C)]        0.762          ; [BTU/F-lbm] % steam
-rho_p       = 716.826;     % Water 1685.142;    % [kg/m^3] calculated using 130.6-(2.54e-2*T) (where T is in °F) Table3 ORNL-TM-3832  44.75          ; [lbm/ft^3] % primary fluid                  
+rho_p       = 1685.142;    % 716.826;     % Water 1685.142;    % [kg/m^3] calculated using 130.6-(2.54e-2*T) (where T is in °F) Table3 ORNL-TM-3832  44.75          ; [lbm/ft^3] % primary fluid                  
 rho_w       = 8425.712;    % [kg/m^3]       526            ; [lbm/ft^3] % inconel                        
 rho_fw      = 828.507;     % [kg/m^3]       53.47          ; [lbm/ft^3] % feedwater                      
 rho_f       = 751.042;     % [kg/m^3]       45.1380115     ; [lbm/ft^3] % boiling water density          
 rho_sc      = (rho_fw + rho_f)/2;     % [kg/m^3]       50.76          ; [lbm/ft^3] % subcooled fluid density        
-rho_b       = 723.073;     % [kg/m^3]       45.14          ; [lbm/ft^3] % boiling fluid density          
+rho_b       = 186.32;     % [kg/m^3]       45.14          ; [lbm/ft^3] % boiling fluid density          
 % rhodc     = 789.871;     % [kg/m^3]       49.31          ; [lbm/ft^3] % downcomer fluid density        
 rho_s       = 26.5561;     % [kg/m^3]       1.5358         [lbm/ft^3] ; % steam density                  
+
+
+P_s   = 12; % [MPa]
+T_s   = (480 + 518)/2 + 273; 
+[dum,dum,Cp_s,vss] = hsh(P_s, T_s); % vss == specific volume
+Cp_s  = Cp_s*1e-6; % [MJ/kg-C]
+rho_s = 1/vss; % [kg/m^3]
 
 %%%%%%%%%%%%%%%%%%%%
 %%% SG TUBE SIDE %%%
@@ -578,9 +587,9 @@ rho_s       = 26.5561;     % [kg/m^3]       1.5358         [lbm/ft^3] ; % steam 
 N           = 6546;        % Number of Tubes                [-]
 L_ft        = 28;          % [ft] need to use in a few places
 L           = 8.5344;      % [m]            28             ; % Active Tube Length             [ft]          sg lengths
-L_b         = 5.97408;     % [m]            19.6000        ; % Boiling Length                 [ft]          sg lengths
-L_s         = 1.28016;     % [m]             4.2000        ; % Steam Length                   [ft]                5.65boil       0.711779
-L_sc        = 1.28016;     % [m]             4.2000        ; % Subcooled Length               [ft]                1.45film boil
+L_b         = 2.3645;     % [m]            19.6000        ; % Boiling Length                 [ft]          sg lengths
+L_s         = 4.723;     % [m]             4.2000        ; % Steam Length                   [ft]                5.65boil       0.711779
+L_sc        = 1.4469;     % [m]             4.2000        ; % Subcooled Length               [ft]                1.45film boil
 D_ot        = 0.015875;    % [m]             0.052083333   ; % outer tube diameter            [ft]               2.875superheat  0.288220
 T_th        = 0.0008636;   % [m]             0.002833333   ; % tube thickness                 [ft]
 D_it        = 0.0141478;   % [m]             0.046416667   ; % internal tube diameter         [ft]               9.975total             1
@@ -595,26 +604,49 @@ A_sot       = 2786.2020;   % [m^2]       29990.429         ; % total surface are
 
 M_stm       = 0.018;       % [kg/mol]        18.0000       ; % Molar weight of steam          [lbm/lb-mol]
 
+P_table = 11.0:0.1:12.5; %Pressure;
+Ts_avg = (459 + 411)/2 + 273;
+T_table = [];
+Hfg_table = [];
+hs_table = [];
+
+for PPP = 11.0:0.1:12.5
+%     [T_sat] = hsat(PPP);
+[T_sat,hf,hg,kf,kg] = hsat(PPP);
+[dum, hss, dum, dum] = hsh(PPP, Ts_avg);
+T_table = [T_table, T_sat];
+hs_table = [hs_table, hss];
+Hfg_table = [Hfg_table, hg-hf];
+end
+T_table = (T_table - 273); % Saturated temperature;
+Hfg_table = Hfg_table*1e-6;
+hs_table = hs_table*1e-6;
+a = polyfit(P_table, T_table, 1);
+X_5 = a(2); K_5 = a(1);
+b = polyfit(P_table, Hfg_table, 1);
+X_4 = b(2); K_4 = b(1);
+c = polyfit(P_table, hs_table, 1);
+dHs_dPs = c(1);
+
 %%%%%%%%%% Temperature %%%%%%%%%%
-T_p1        = 320.712;     % [°C]           609.28         ; % Primary Coolant Temperature nod[F]
-T_p2        = 320.478;     % [°C]           608.86         ; % Primary Coolant Temperature nod[F]
-T_p3        = 311.033;     % [°C]           591.86         ; % Primary Coolant Temperature nod[F]
-T_p4        = 305.206;     % [°C]           581.37         ; % Primary Coolant Temperature nod[F]
-T_p5        = 303.289;     % [°C]           577.92         ; % Primary Coolant Temperature nod[F]
-T_p6        = 297.506;     % [°C]           567.51         ; % Primary Coolant Temperature nod[F]
-T_w0        = 320.712;     % [°C]           609.28         ; % Temperature for wall node i-1  [F]
-T_w1        = 320.344;     % [°C]           608.62         ; % Temperature for wall node 1    [F]
-T_w2        = 319.794;     % [°C]           607.63         ; % Temperature for wall node 2    [F]
-T_w3        = 301.311;     % [°C]           574.36         ; % Temperature for wall node 3    [F]
-T_w4        = 299.206;     % [°C]           570.57         ; % Temperature for wall node 4    [F]
-T_w5        = 298.512;     % [°C]           569.32         ; % Temperature for wall node 5    [F]
-T_w6        = 283.112;     % [°C]           541.60         ; % Temperature for wall node 6    [F]
-T_s1        = 313.717;     % [°C]           596.69         ; % Temperature for superheated nod[F]
-T_s2        = 307.462;     % [°C]           585.43         ; % Temperature for superheated nod[F]
-T_sc1       = 274.967;     % [°C]           526.94         ; %                                [F]
+T_p1        = 524.89;     % [°C]           609.28         ; % Primary Coolant Temperature nod[F]
+T_p2        = 501.86;     % [°C]           608.86         ; % Primary Coolant Temperature nod[F]
+T_p3        = 471.99;     % [°C]           591.86         ; % Primary Coolant Temperature nod[F]
+T_p4        = 447.35;     % [°C]           581.37         ; % Primary Coolant Temperature nod[F]
+T_p5        = 435.68;     % [°C]           577.92         ; % Primary Coolant Temperature nod[F]
+T_p6        = 420.07;     % [°C]           567.51         ; % Primary Coolant Temperature nod[F]
+T_w1        = 502.44;     % [°C]           608.62         ; % Temperature for wall node 1    [F]
+T_w2        = 462.44;     % [°C]           607.63         ; % Temperature for wall node 2    [F]
+T_w3        = 369.83;     % [°C]           574.36         ; % Temperature for wall node 3    [F]
+T_w4        = 363.06;     % [°C]           570.57         ; % Temperature for wall node 4    [F]
+T_w5        = 370.47;     % [°C]           569.32         ; % Temperature for wall node 5    [F]
+T_w6        = 332.86;     % [°C]           541.60         ; % Temperature for wall node 6    [F]
+T_s1        = 482.63;     % [°C]           596.69         ; % Temperature for superheated nod[F]
+T_s2        = 427.66;     % [°C]           585.43         ; % Temperature for superheated nod[F]
+T_sc2       = 280.26;     % [°C]           526.94         ; %                                [F]
 T_fw        = 212.222;     % [°C]           414.00         ; % Feedwater temperature          [F]
-T_sat       = 295.812;     % [°C]           564.46         ; % Saturation temperature of the s[F]
-T_pin       = 320.833;     % [°C]           609.50         ; % primary inlet temperature      [F]
+T_sat       = T_sat - 273.15; % 295.812;     % [°C]           564.46         ; % Saturation temperature of the s[F]
+T_pin       = 538;     % [°C]           609.50         ; % primary inlet temperature      [F]
 
 %%%%%%%%%% Pressure %%%%%%%%%%
 P_p1        = 0.0000;
@@ -623,25 +655,27 @@ P_p3        = 0.0000;
 P_p4        = 0.0000;
 P_p5        = 0.0000;
 P_p6        = 0.0000;
-P_sat       = 6; % [MPa]     170956.0125       ; % Saturation Pressure            [lbf/ft^2]
-P_set       = 5.8; % [MPa]     118800.0000       ; % Steam Pressure Setpoint        [lbf/ft^2]
-P_ss0       = 5.8; % [MPa]     118800.0000       ; % Pressure superheated steam lump[lbf/ft^2]
-P_s         = 5.8; % [MPa]     118800.0000       ; % Pressure superheated steam lump[lbf/ft^2]
-P_sc        = 5.8; % [MPa]     118800.0000       ; % Pressure subcooled initial     [lbf/ft^2]
+%P_sat       = 12.7; % [MPa]     170956.0125       ; % Saturation Pressure            [lbf/ft^2]
+P_set       = 12.5; % [MPa]     118800.0000       ; % Steam Pressure Setpoint        [lbf/ft^2]
+P_ss0       = 12.5; % [MPa]     118800.0000       ; % Pressure superheated steam lump[lbf/ft^2]
+P_s         = 12.5; % [MPa]     118800.0000       ; % Pressure superheated steam lump[lbf/ft^2]
+P_sc        = 12.5; % [MPa]     118800.0000       ; % Pressure subcooled initial     [lbf/ft^2]
+
+deltaP = 0.5;
+P_sat = (P_s + deltaP);
+%X5=402.94; K5=0.14;  %Tsat~Psat
+T_sat = X_5 + K_5*P_sat;
+%Tsat=546.6;  %Exit temperature=317C and Degree of superheat is 43.4;
+H_fg = X_4 + K_4*P_sat;
 
 %%%%%%%%%% Mass Flow Rate %%%%%%%%%%
-W_p0        = 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate inlet           [lbm/s]
-W_p1        = 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate node 1          [lbm/s]
-W_p2        = 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate node 2          [lbm/s]
-W_p3        = 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate node 3          [lbm/s]
-W_p4        = 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate node 4          [lbm/s]
-W_p5        = 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate outlet          [lbm/s]
-W_fw        = 226.7962;    % [kg/s]         500.0000       ; % Mass flow rate of feedwater    [lbm/s]
-Wsc0        = 226.7962;    % [kg/s]         500.0000       ; % Mass flow rate of subcooled reg[lbm/s]
-Wdb0        = 226.7962;    % [kg/s]         500.0000       ; % Mass flow rate of feedwater    [lbm/s]
-Wb0         = 226.7962;    % [kg/s]         500.0000       ; % mass flow rate for the boiling [lbm/s]
-W120        = 226.7962;    % [kg/s]         500.0000       ; % mass flow rate                 [lbm/s]
-W_s         = 226.7962;    % [kg/s]         500.0000       ; % Mass flow rate of steam        [lbm/s]
+W_p0        = W_3; % 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate inlet           [lbm/s]
+W_p1        = W_3; % 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate node 1          [lbm/s]
+W_p2        = W_3; % 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate node 2          [lbm/s]
+W_p3        = W_3; % 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate node 3          [lbm/s]
+W_p4        = W_3; % 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate node 4          [lbm/s]
+W_p5        = W_3; % 3779.937;    % [kg/s]        8333.3333       ; % Mass Flow Rate outlet          [lbm/s]
+W_fw        = 321.5452;    % [kg/s]         500.0000       ; % Mass flow rate of feedwater    [lbm/s]
 
 %%%%%%%%%% Area %%%%%%%%%%
 A_pw1       = 186.2298;    % [m^2]         2004.5603       ; % heat transfer area of Node 1 pr[ft^2]
@@ -669,7 +703,7 @@ Z_ss        = 0.76634;      % Compressibility factor at 570 K, 60 atm
 R           = 8.314462E-6; % [MJ/mol-°C] % Universal gas constant 
 
 %%%%%%%%%% HEAT TRANSFER COEFFICIENTS %%%%%%%%%%
-h_pw        = 9101.343578935E-6; % [MW/m^2-°C]      1.8070       ; % Effective primary to wall heat [BTU/s-ft^2-F]
+h_pw        = h_s_shx; %9101.343578935E-6; % [MW/m^2-°C]      1.8070       ; % Effective primary to wall heat [BTU/s-ft^2-F]
 % h_pw1       = 36938.24E-6; % [MW/m^2-°C]      1.8070       ; % htc primary and wall node 1    [BTU/s-ft^2-F]
 % h_pw2       = 36938.24E-6; % [MW/m^2-°C]      1.8070       ; % htc primary and wall node 2    [BTU/s-ft^2-F]
 % h_pw3       = 36938.24E-6; % [MW/m^2-°C]      1.8070       ; % htc primary and wall node 3    [BTU/s-ft^2-F]
@@ -698,19 +732,19 @@ ti          = 20         ; %
 %%%%%%%%%% BALANCE OF PLANT PARAMETERS %%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-H_nc        = 2.9193;      % [MJ/kg]         1255.9         ; % nozzle chest enthalpy          [BTU/lbm]
-rho_nc      = 27.4877;     % [kg/m^3]           1.716       ; % nozzle chest density           [lbm/ft^3]
-w_hp_out    = 158.304;     % [kg/s]      349;%199.0832      ; % mass flow rate out of HP turbin[lbm/s]
-rho_rh      = 5.3374;      % [kg/m^3]           0.3332      ; % reheater density               [lbm/ft^3]
-H_rh        = 2.8591;      % [MJ/kg]         1230           ; % reheater enthalpy              [BTU/lbm]
+H_nc        = 3.2952;      % [MJ/kg]         1255.9         ; % nozzle chest enthalpy          [BTU/lbm]
+rho_nc      = 39.633;     % [kg/m^3]           1.716       ; % nozzle chest density           [lbm/ft^3]
+w_hp_out    = 225.96;     % [kg/s]      349;%199.0832      ; % mass flow rate out of HP turbin[lbm/s]
+rho_rh      = 13.254;      % [kg/m^3]           0.3332      ; % reheater density               [lbm/ft^3]
+H_rh        = 2.8115;      % [MJ/kg]         1230           ; % reheater enthalpy              [BTU/lbm]
 w_rh_out    = 33.7926;     % [kg/s]      74.5;%45.3285      ; % output reheat steam flow rate  [lbm/s]
-Q_rh        = 5.721113;    % [MJ/s]          5426.2         ; % heat transfer rate in reheater [BTU/s]
-w_lp_out    = 99.473;      % [kg/s]    219.3;%125.4166      ; % mass flow rate out of LP turbin[lbm/s]
-H_fwh1      = 0.6727;      % [MJ/kg]          289.4181      ; % enthalpy of heater 1           [BTU/lbm]
-H_fwh2      = 0.8997;      % [MJ/kg]          387.0721      ; % enthalpy of heater 2           [BTU/lbm]
+Q_rh        = 1.745;    % [MJ/s]          5426.2         ; % heat transfer rate in reheater [BTU/s]
+w_lp_out    = 158.95;      % [kg/s]    219.3;%125.4166      ; % mass flow rate out of LP turbin[lbm/s]
+H_fwh1      = 0.46009;      % [MJ/kg]          289.4181      ; % enthalpy of heater 1           [BTU/lbm]
+H_fwh2      = 0.6784;      % [MJ/kg]          387.0721      ; % enthalpy of heater 2           [BTU/lbm]
 w_fwh       = 97.0688;     % [kg/s       214;%122.9059      ; % mass flow rate from heater 2 to[lbm/s]
 V_nc        = 5.6634;      % [m^3]            200           ; % volume of nozzle chest         [ft^3]
-V_rh        = 56.634;      % [m^3]           2000           ; % volume of reheater             [ft^3]
+V_rh        = 2*56.634;      % [m^3]           2000           ; % volume of reheater             [ft^3]
 J           = 1e-6;        % [MJ/J]             0.001285067 ; % BTU/ft-lbf
 nu_f        = 0.0011;      % [m^3/kg]           0.0184      ; % specific vol. @ 200 psi
 A_k2        = 0.2817;      % [m^2]              3.0326      ; % backcalculated from w1=w2
@@ -719,8 +753,8 @@ h_fwh1      = 0.5927;      % [MJ/kg]     255;%215           ; % heat transfer fo
 h_fwh2      = 0.5927;      % [MJ/kg]     255;%225           ; % heat transfer for heater 2     [BTU/lbm]
 tau_fwh1    =         100; % time constant for heater 1
 tau_fwh2    =          65; % time constant for heater 2
-tau_rh1     =           3; % time constant for reheater flow
-tau_rhh     =          10; % time constant for reheater heat transfer
+tau_rh1     =           3*2; % time constant for reheater flow
+tau_rhh     =          10*2; % time constant for reheater heat transfer
 tau_hp      =           2; % time constant for HP turbine
 tau_lp      =          10; % time constant for LP turbine
 tau_rh2     =          10; % time constant for heater 2 flow
@@ -736,11 +770,17 @@ H_lp_isen   = 958.4*1054.35e-6/0.45359237; % [MJ/kg]
 run('Xsteam/SteamEnthalpy.m');
 run('Xsteam/NozzleChestPressure.m');
 run('Xsteam/ReheaterPressure.m');
+run('Xsteam/NozzleChestSpecVol.m');
+run('Xsteam/ReheaterEnthalpy_satliquid.m');
+run('Xsteam/ReheaterEnthalpy_vaporization.m');
+run('Xsteam/ReheaterEnthalpy_satvapor.m');
+run('Xsteam/CondenserEnthalpy_satliquid.m');
+run('Xsteam/CondenserEnthalpy_vaporization.m');
 
 % HP turbine steam enthalpy at isentropic endpoints
 term1 = 1080.3*1054.35e-6/0.45359237; % [MJ/kg]
-p1    = 200*6894.76;                  % [Pa]
-p2    = 1000*6894.76;                 % [Pa]
+p1    = 200*6894.76/1e6;                  % [MPa]
+p2    = 1000*6894.76/1e6;                 % [MPa]
 ce1   = 1.2471e-07;                   % [m^3/kg]
 ce2   = 5.3816e-14;                   % [m^6/kg^2]
 ce3   = 3.3721e-08;                   % [m^3/kg]
